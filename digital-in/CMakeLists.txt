@@ -1,0 +1,20 @@
+cmake_minimum_required(VERSION 3.15)
+
+set(NAME dig_in)
+set(PICO_BOARD pico_w)
+
+set(FREERTOS_KERNEL_PATH $ENV{FREERTOS_KERNEL_PATH})
+set(PICO_SDK_PATH $ENV{PICO_SDK_PATH})
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+
+include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
+include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
+
+project(${NAME} C CXX ASM)
+
+pico_sdk_init()
+
+add_subdirectory(src)
+

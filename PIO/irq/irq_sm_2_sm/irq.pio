@@ -1,0 +1,116 @@
+.program buttons
+
+.wrap_target
+  loop:
+  nop [31]
+  nop [31]
+  in pins, 3 [31]
+
+  mov x, isr
+  jmp !x loop
+
+  set y, 0b0001
+  jmp x!=y red
+    irq wait 0
+    wait 0 pin 0
+
+  red:
+    set y, 0b0010
+    jmp x!=y ylw
+      irq wait 1
+      wait 0 pin 1
+
+  ylw:
+    set y, 0b0100
+    jmp x!=y loop
+      irq wait 2
+      wait 0 pin 2
+.wrap
+
+
+.program led0
+
+  set x, 0b0000
+.wrap_target
+  wait 1 irq 1
+  mov x, !x
+  mov pins, x
+.wrap
+
+
+.program led1
+
+  set x, 0b0000
+.wrap_target
+  wait 1 irq 0
+  mov x, !x
+  mov pins, x
+.wrap
+
+
+.program led2
+
+  set x, 0b0000
+.wrap_target
+  wait 1 irq 2
+  mov x, !x
+  mov pins, x
+.wrap
+
+
+% c-sdk {
+
+  void irq_init(uint but_base, uint led_base, float div) {
+    PIO pio = pio0;
+    uint sm0 = pio_claim_unused_sm(pio, true);
+    uint sm1 = pio_claim_unused_sm(pio, true);
+    uint sm2 = pio_claim_unused_sm(pio, true);
+    uint sm3 = pio_claim_unused_sm(pio, true);
+
+    uint offset0 = pio_add_program(pio, &buttons_program);
+    uint offset1 = pio_add_program(pio, &led0_program);
+    uint offset2 = pio_add_program(pio, &led1_program);
+    uint offset3 = pio_add_program(pio, &led2_program);
+
+    pio_gpio_init(pio, but_base);
+    pio_gpio_init(pio, but_base + 1);
+    pio_gpio_init(pio, but_base + 2);
+    pio_sm_set_consecutive_pindirs(pio, sm0, but_base, 3, false);
+
+    pio_gpio_init(pio, led_base);
+    pio_sm_set_consecutive_pindirs(pio, sm1, led_base, 1, true);
+    
+    pio_gpio_init(pio, led_base + 1);
+    pio_sm_set_consecutive_pindirs(pio, sm2, led_base+1, 1, true);
+
+    pio_gpio_init(pio, led_base + 2);
+    pio_sm_set_consecutive_pindirs(pio, sm3, led_base+2, 1, true);
+
+    pio_sm_config config0 = buttons_program_get_default_config(offset0);
+    sm_config_set_clkdiv(&config0, div);
+    sm_config_set_in_pin_base(&config0, but_base);
+    sm_config_set_in_pin_count(&config0, 3);
+    pio_sm_init(pio, sm0, offset0, &config0);
+
+    pio_sm_config config1 = led0_program_get_default_config(offset1);
+    sm_config_set_clkdiv(&config1, div);
+    sm_config_set_out_pins(&config1, led_base, 1);
+    pio_sm_init(pio, sm1, offset1, &config1);
+
+    pio_sm_config config2 = led1_program_get_default_config(offset2);
+    sm_config_set_clkdiv(&config2, div);
+    sm_config_set_out_pins(&config2, led_base+1, 1);
+    pio_sm_init(pio, sm2, offset2, &config2);
+
+    pio_sm_config config3 = led2_program_get_default_config(offset3);
+    sm_config_set_clkdiv(&config3, div);
+    sm_config_set_out_pins(&config3, led_base+2, 1);
+    pio_sm_init(pio, sm3, offset3, &config3);
+
+    pio_sm_set_enabled(pio, sm0, true);
+    pio_sm_set_enabled(pio, sm1, true);
+    pio_sm_set_enabled(pio, sm2, true);
+    pio_sm_set_enabled(pio, sm3, true);
+  }
+
+%}

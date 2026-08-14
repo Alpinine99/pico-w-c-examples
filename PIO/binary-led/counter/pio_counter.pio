@@ -1,0 +1,32 @@
+.program pio_counter
+
+.wrap_target
+  pull block      ; stall on TX fifo until data is available
+  out x, 32       ; move data to x scratch register
+  mov pins, x     ; move data into the pins
+  in pins, 4      ; read from the 4 pins into osr
+  push block      ; stall until RX fifo is free
+.wrap
+
+% c-sdk {
+
+  void counter_init(PIO pio, uint sm, uint base_pin, uint count, float div) {
+    uint offset = pio_add_program(pio, &pio_counter_program);
+    
+    for (int i=0; i<count; i++)
+      pio_gpio_init(pio, base_pin + i);
+    pio_sm_set_consecutive_pindirs(pio, sm, base_pin, count, true);
+
+    pio_sm_config config = pio_counter_program_get_default_config(offset);
+    sm_config_set_out_pins(&config, base_pin, count);
+    sm_config_set_in_pin_base(&config, base_pin);
+    sm_config_set_in_pin_count(&config, count);
+    sm_config_set_in_shift(&config, false, false, 16);
+    sm_config_set_clkdiv(&config, div);
+    
+    pio_sm_init(pio, sm, offset, &config);
+    pio_sm_set_enabled(pio, sm, true);
+  }
+
+%}
+

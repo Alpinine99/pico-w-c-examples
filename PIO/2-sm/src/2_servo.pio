@@ -1,0 +1,40 @@
+.program two_servo
+
+  pull block
+  mov isr, osr ; 20,000
+  pull block   ; 500
+
+.wrap_target
+  mov x, osr
+  pull noblock
+  mov y, isr
+  set pins, 0b0000
+
+  low:
+    jmp x!=y nxt
+      set pins, 0b0001
+    nxt:
+      jmp y-- low
+.wrap
+
+% c-sdk {
+
+  void servo_init(PIO pio, uint sm, uint pin, float div) {
+    uint offset = pio_add_program(pio, &two_servo_program);
+    
+    pio_gpio_init(pio, pin);
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
+
+    pio_sm_config config = two_servo_program_get_default_config(offset);
+    sm_config_set_set_pins(&config, pin, 1);
+    sm_config_set_clkdiv(&config, div);
+    sm_config_set_in_shift(&config, false, false, 0);
+
+    pio_sm_init(pio, sm, offset, &config);
+    pio_sm_set_enabled(pio, sm, true);
+
+    pio_sm_put_blocking(pio, sm, (uint32_t) 20000);
+    pio_sm_put_blocking(pio, sm, (uint32_t) 500);
+  }
+
+%}

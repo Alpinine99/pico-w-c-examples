@@ -1,0 +1,16 @@
+.program i_rq
+
+.wrap_target
+  wait 1 pin 0 [31]
+  nop [31]
+  nop [31]
+  nop [31]
+
+  irq wait 0
+
+  wait 0 pin 0 [31]
+  nop [31]
+  nop [31]
+  nop [31]
+.wrap
+

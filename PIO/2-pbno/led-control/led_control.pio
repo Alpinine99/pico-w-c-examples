@@ -1,0 +1,49 @@
+.program led_control
+
+.wrap_target
+  read_pins:
+    in pins, 2
+    mov x, isr
+    jmp !x read_pins
+
+    set y, 0b0001
+    jmp x!=y else
+      set y, 0b0101
+      mov pins, y
+      jmp read_pins
+
+    else:
+    set y, 0b0010
+    jmp x!=y read_pins
+      set y, 0b1010
+      mov pins, y
+.wrap
+
+% c-sdk {
+  
+  void led_control_init(uint led_base_pin, uint led_pin_count, uint pbno_base_pin, uint pbno_pin_count, float div) {
+    PIO pio = pio0;
+    uint sm = pio_claim_unused_sm(pio, true);
+
+    for (uint pin=led_base_pin; pin<led_base_pin+led_pin_count; pin++)
+      pio_gpio_init(pio, pin);
+    pio_sm_set_consecutive_pindirs(pio, sm, led_base_pin, led_pin_count, true);
+    
+    for (uint pin=pbno_base_pin; pin<pbno_base_pin+pbno_pin_count; pin++) {
+      pio_gpio_init(pio, pin);
+      gpio_pull_down(pin);
+    }
+    pio_sm_set_consecutive_pindirs(pio, sm, pbno_base_pin, pbno_pin_count, false);
+
+    uint offset = pio_add_program(pio, &led_control_program);
+    pio_sm_config config = led_control_program_get_default_config(offset);
+    sm_config_set_clkdiv(&config, div);
+    sm_config_set_in_pin_base(&config, pbno_base_pin);
+    sm_config_set_in_pin_count(&config, pbno_pin_count);
+    sm_config_set_out_pins(&config, led_base_pin, led_pin_count);
+    pio_sm_init(pio, sm, offset, &config);
+
+    pio_sm_set_enabled(pio, sm, true);
+  }
+
+%}

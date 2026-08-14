@@ -1,0 +1,33 @@
+.program pio_counter
+
+.wrap_target
+  set x, 15
+  loop:
+    set y, 31
+    mov pins, !x
+    delay:
+      jmp y-- delay [31]
+  jmp x-- loop
+.wrap
+
+% c-sdk {
+
+  void counter_init(uint base_pin, uint count, float div) {
+    PIO pio = pio0;
+    uint sm = pio_claim_unused_sm(pio, true);
+
+    uint offset = pio_add_program(pio, &pio_counter_program);
+
+    for (uint i=0; i<count; i++)
+      pio_gpio_init(pio, base_pin + i);
+    pio_sm_set_consecutive_pindirs(pio, sm, base_pin, count, true);
+
+    pio_sm_config config = pio_counter_program_get_default_config(offset);
+    sm_config_set_out_pins(&config, base_pin, count);
+    sm_config_set_clkdiv(&config, div);
+
+    pio_sm_init(pio, sm, offset, &config);
+    pio_sm_set_enabled(pio, sm, true);
+  }
+
+%}

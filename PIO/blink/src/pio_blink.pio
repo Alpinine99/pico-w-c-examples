@@ -1,0 +1,39 @@
+.program pio_blink // program name
+
+.wrap_target
+  set pins, 1         [30] ; set pin to bin; 01 and burn the remaining 19 clock cycles
+  set y, 31                ; set y register to 31 (max 5 bit number)
+delay_high:
+  jmp y-- delay_high  [31] ; loop 32 times, each iteration burns 32 cycles 
+  set pins, 2         [19] ; set pins to bin: 10 and burn the remaining 19 clock cycles
+  set y, 31
+delay_low:
+  jmp y-- delay_low   [31] ; loop 32 times, each iteration burns 32 cycles 
+.wrap
+
+% c-sdk {
+
+  void blink_init(PIO pio, uint sm, uint offset, uint pin, float div) {
+    // program name is appended to program_get... and the rest of pio functions as of generated header
+    pio_sm_config config = pio_blink_program_get_default_config(offset);
+
+    uint count = 2;
+    // connects pins to 'set pins' instruction (allow control with set instruction)
+    sm_config_set_set_pins(&config, pin, count); // config* , start, count
+
+    // allow for control pin as output
+    for (int i=0; i<count; i++)
+      pio_gpio_init(pio, pin+i);
+
+    // set pin direction to output (false for input)
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, count, true);
+
+    // set clock divider for the state machine
+    sm_config_set_clkdiv(&config, div);
+
+    // load configuration and jump to the start of the program
+    pio_sm_init(pio, sm, offset, &config);
+  }
+
+%}
+

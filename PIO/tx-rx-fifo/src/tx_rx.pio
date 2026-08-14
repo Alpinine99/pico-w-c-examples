@@ -1,0 +1,52 @@
+.program tx_rx
+
+.wrap_target
+  ; getting first 4 TX fifo data
+  set x, 4
+  get_data:
+    pull block
+    mov pins, osr
+    out isr, 32
+    push block
+    set y, 31
+    delay:
+      jmp y-- delay [31]
+  jmp x-- get_data
+
+  ; write 4 words to RX fifo
+  set x, 4
+  push_data:
+    mov pins, osr
+    out isr, 32
+    push block
+    pull block
+    set y, 31
+    delay_p:
+      jmp y-- delay_p [31]
+  jmp x-- push_data
+.wrap
+
+% c-sdk {
+
+  void tx_rx_init(PIO pio, uint sm, uint base_pin, uint count, float div) {
+    // load program into state machine memory
+    uint offset = pio_add_program(pio, &tx_rx_program);
+
+    // initialize gpio pins for state machine
+    for (uint i=0; i<count; i++)
+      pio_gpio_init(pio, base_pin + i);
+    pio_sm_set_consecutive_pindirs(pio, sm, base_pin, count, true);
+
+    // configure sm settings
+    pio_sm_config c = tx_rx_program_get_default_config(offset);
+    sm_config_set_clkdiv(&c, div);
+    sm_config_set_out_pins(&c, base_pin, count);
+
+    // load settings to sm
+    pio_sm_init(pio, sm, offset, &c);
+
+    // start state machine
+    pio_sm_set_enabled(pio, sm, true);
+  }
+
+%}

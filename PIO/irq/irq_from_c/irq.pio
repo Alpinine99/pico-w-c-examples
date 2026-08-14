@@ -1,0 +1,54 @@
+.program I_rq
+
+.wrap_target
+  wait 1 pin 0
+  nop [31]
+  nop [31]
+
+  irq set 0
+  
+  wait 0 pin 0
+  nop [31]
+  nop [31]
+.wrap
+
+% c-sdk {
+  PIO _pio;
+  uint _led_pin;
+
+  void irq_handler() {
+    if (pio_interrupt_get(_pio, 0)) {
+      pio_interrupt_clear(_pio, 0);
+      printf("interrupt fired!\n");
+      gpio_put(_led_pin, !gpio_get(_led_pin));
+    }
+  }
+
+  void irq_init(PIO pio, uint sm, uint led_pin, uint but_pin, float div) {
+    _pio = pio;
+    gpio_init(led_pin);
+    gpio_set_dir(led_pin, GPIO_OUT);
+    _led_pin = led_pin;
+
+    uint offset = pio_add_program(pio, &I_rq_program);
+
+    pio_gpio_init(pio, but_pin);
+    gpio_pull_down(but_pin);
+    pio_sm_set_consecutive_pindirs(pio, sm, but_pin, 1, true);
+
+    pio_sm_config config = I_rq_program_get_default_config(offset);
+    sm_config_set_clkdiv(&config, div);
+    sm_config_set_in_pin_base(&config, but_pin);
+    sm_config_set_in_pin_count(&config, 1);
+
+    pio_sm_init(pio, sm, offset, &config);
+
+    pio_set_irq0_source_enabled(pio, pis_interrupt0, true);
+    
+    irq_set_exclusive_handler(PIO0_IRQ_0, irq_handler);
+    irq_set_enabled(PIO0_IRQ_0, true);
+
+    pio_sm_set_enabled(pio, sm, true);
+  }
+
+%}

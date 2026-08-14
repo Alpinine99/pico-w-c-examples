@@ -1,0 +1,48 @@
+.program distM
+
+  pull block
+.wrap_target
+  mov y, osr
+  set pins, 0b0000 [19]
+  set pins, 0b0001 [31]
+  nop [31]
+  nop [31]
+  nop [3]
+  set pins, 0b0000
+
+  wait 1 pin 0
+  read_again:
+    mov x, pins
+    jmp !x record
+      jmp y-- read_again
+
+  record:
+    mov isr, !y
+    irq wait 0
+    push block
+.wrap
+
+% c-sdk {
+
+  void distance_init(PIO pio, uint sm, uint TRIG_PIN, uint ECHO_PIN, float div) {
+    uint offset = pio_add_program(pio, &distM_program);
+
+    pio_gpio_init(pio, TRIG_PIN);
+    pio_sm_set_consecutive_pindirs(pio, sm, TRIG_PIN, 1, true);
+
+    pio_gpio_init(pio, ECHO_PIN);
+    pio_sm_set_consecutive_pindirs(pio, sm, ECHO_PIN, 1, false);
+
+    pio_sm_config config = distM_program_get_default_config(offset);
+    sm_config_set_clkdiv(&config, div);
+    sm_config_set_set_pins(&config, TRIG_PIN, 1);
+    sm_config_set_in_pin_base(&config, ECHO_PIN);
+    sm_config_set_in_pin_count(&config, 1);
+    pio_sm_init(pio, sm, offset, &config);
+
+    pio_sm_set_enabled(pio, sm, true);
+    pio_sm_put_blocking(pio, sm, (uint32_t) UINT32_MAX);
+  }
+
+%}
+

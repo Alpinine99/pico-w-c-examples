@@ -1,0 +1,30 @@
+.program pio_servo
+  
+  ; osr: 1,500  -> 10111 01110 0
+  ; 2500 -> 10011 10001 00
+  ; 500 -> 11111 0100
+  set y, 0b11111
+  mov isr, y
+  set y, 0b0100
+  in y, 4
+  mov osr, isr
+
+  ; isr: 20,000 -> 10011 10001 00000
+  set y, 0b10011
+  mov isr, y
+  set y, 0b10001
+  in y, 5
+  in null, 5
+
+.wrap_target
+  mov x, osr
+  pull noblock
+  mov y, isr
+  set pins, 0b0000
+  low:
+    jmp x!=y nxt 
+      set pins, 0b0001
+    nxt:
+      jmp y-- low
+.wrap
+

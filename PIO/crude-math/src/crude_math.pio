@@ -1,0 +1,64 @@
+.program crude_math
+
+.wrap_target
+  pull block
+
+  ; x2
+  mov isr, osr
+  in null, 1
+  mov pins, isr
+  set y, 31
+  delay:
+    jmp y-- delay [31]
+  push block
+
+  ; x4
+  mov isr, osr
+  in null, 2
+  mov pins, isr
+  set y, 31
+  delay_1:
+    jmp y-- delay_1 [31]
+  push block
+
+  ; x2 + 1
+  set x, 1
+  mov isr, osr
+  in x, 1
+  mov pins, isr
+  set y, 31
+  delay_2:
+    jmp y-- delay_2 [31]
+  push block
+
+  ; x4 + 3
+  set x, 3
+  mov isr, osr
+  in x, 2
+  mov pins, isr
+  set y, 31
+  delay_3:
+    jmp y-- delay_3 [31]
+  push block
+.wrap
+
+
+% c-sdk {
+
+  void crude_math_init(PIO pio, uint sm, uint base_pin, uint count, float div) {
+    uint offset = pio_add_program(pio, &crude_math_program);
+
+    for (uint i=0; i<count; i++)
+      pio_gpio_init(pio, base_pin+i);
+    pio_sm_set_consecutive_pindirs(pio, sm, base_pin, count, true);
+
+    pio_sm_config c = crude_math_program_get_default_config(offset);
+    sm_config_set_clkdiv(&c, div);
+    sm_config_set_out_pins(&c, base_pin, count);
+    sm_config_set_in_shift(&c, false, false, 1);
+    pio_sm_init(pio, sm, offset, &c);
+
+    pio_sm_set_enabled(pio, sm, true);
+  }
+
+%}
