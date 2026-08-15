@@ -15,7 +15,7 @@ project(hotspot C CXX ASM)
 
 pico_sdk_init()
 
-foreach(name IN ITEMS pico_net pico_monitor)
+foreach(name IN ITEMS pico_net pico_monitor pico_sniffer)
   set(SOURCES
     ${name}/main.c
     dnsserver/dnsserver.c
@@ -24,6 +24,8 @@ foreach(name IN ITEMS pico_net pico_monitor)
   
   if(${name} STREQUAL "pico_monitor")
     list(APPEND SOURCES ${name}/monitor/monitor.c)
+  elseif(${name} STREQUAL "pico_sniffer")
+    list(APPEND SOURCES ${name}/sniffer/sniffer.c)
   endif()
 
   add_executable(${name}
@@ -36,9 +38,13 @@ foreach(name IN ITEMS pico_net pico_monitor)
     PRIVATE ${CMAKE_CURRENT_LIST_DIR}/dhcpserver
   )
   
-  if (${name} STREQUAL pico_monitor)
+  if (${name} STREQUAL "pico_monitor")
     target_include_directories(${name}
       PRIVATE ${name}/monitor
+    )
+  elseif (${name} STREQUAL "pico_sniffer")
+    target_include_directories(${name}
+      PRIVATE ${name}/sniffer
     )
   endif()
 
