@@ -71,6 +71,8 @@ void wifi_con() {
 
   close(fd);
   printf("[+] session ended\n");
+
+  cyw43_arch_disable_sta_mode();
   cyw43_arch_deinit();
 
   vTaskDelete(NULL);
